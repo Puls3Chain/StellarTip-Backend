@@ -37,6 +37,9 @@ export class User {
   @Column({ nullable: true })
   avatarUrl: string;
 
+  @Column('jsonb', { nullable: true })
+  socialLinks: { twitter?: string; github?: string; youtube?: string; website?: string } | null;
+
   @Column({ unique: true, nullable: true })
   email: string;
 

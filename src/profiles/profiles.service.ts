@@ -24,6 +24,7 @@ export class ProfilesService {
         'bio',
         'avatarUrl',
         'walletAddress',
+        'socialLinks',
         'createdAt',
       ],
     });
@@ -170,6 +171,21 @@ export class ProfilesService {
 
     user.walletAddress = walletAddress;
     return this.usersRepository.save(user);
+  }
+
+  async updateSocialLinks(userId: string, socialLinks: { twitter?: string; github?: string; youtube?: string; website?: string }) {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    user.socialLinks = {
+      ...(user.socialLinks || {}),
+      ...socialLinks,
+    };
+
+    await this.usersRepository.save(user);
+    return user.socialLinks;
   }
 
   async searchProfiles(query: string) {
