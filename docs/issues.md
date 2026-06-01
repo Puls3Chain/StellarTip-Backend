@@ -106,14 +106,15 @@ The `StellarService` (`src/stellar/stellar.service.ts`) is entirely stubbed with
 The `TipAsset` enum supports both `XLM` and `USDC`, but the service and validation don't properly differentiate between them. USDC tipping requires proper Stellar asset notation (issuer, code) and balance validation.
 
 ### Acceptance Criteria
-- [ ] Validate USDC asset includes the issuer account address from environment config
-- [ ] `POST /tips` rejects unsupported asset types with a clear error
+- [ ] Add `USDC_ISSUER` environment variable to `.env.example` pointing to the Stellar network's USDC issuer
+- [ ] Validate USDC asset includes the issuer account address from `USDC_ISSUER` env var — **reject USDC if `USDC_ISSUER` is not configured**
+- [ ] `POST /tips` rejects unsupported asset types with a clear error message including the asset code and expected format
 - [ ] Tip creation stores the asset issuer for USDC in a new `assetIssuer` column
 - [ ] Tip stats (`getTipStats`) correctly groups by both asset type and issuer
 - [ ] Add `assetIssuer` column to `Tip` entity (nullable for native XLM)
 - [ ] Update `CreateTipDto` with optional `assetIssuer` field
 - [ ] Add migration for the new column
-- [ ] Write unit tests for USDC tip creation flow
+- [ ] Write unit tests for USDC tip creation flow (with and without issuer configured)
 
 ---
 
@@ -173,6 +174,7 @@ Creators currently have no way to know when they receive a tip unless they manua
 - [ ] Add `GET /notifications/unread-count` for badge display
 - [ ] If creator has an email and opted in, send an email notification
 - [ ] Email template includes: sender wallet (or "Anonymous"), amount, asset, message
+- [ ] **Email sending is asynchronous** — queued via a background job (e.g., Bull or in-memory queue) so it does not block the HTTP response
 - [ ] Email sending is behind a feature flag and uses a mock transport in development
 - [ ] Add unit tests for notification creation and read status
 - [ ] Update README with new endpoints
@@ -265,13 +267,11 @@ The API lacks health check endpoints needed for container orchestration (Kuberne
     "version": "0.1.0"
   }
   ```
-- [ ] Add `GET /health/ready` endpoint that checks:
-  - Database connectivity (runs `SELECT 1`)
-  - Stellar Horizon connectivity (basic ping)
-- [ ] Unhealthy database returns `503 Service Unavailable`
+- [ ] Add `GET /health/ready` endpoint that checks **only database connectivity** (runs `SELECT 1`) — used as k8s readiness probe; DB failure returns `503 Service Unavailable`
+- [ ] Add `GET /health/remote` endpoint that checks Stellar Horizon connectivity — separate from readiness to avoid cascading failures if Stellar is down
 - [ ] Create a `HealthModule` with `TerminusHealthCheck` (or custom)
 - [ ] New endpoints are NOT rate-limited
-- [ ] Add unit tests for health check logic
+- [ ] Add unit tests for health check logic (DB health, Stellar health, combined)
 
 ---
 
@@ -445,6 +445,6 @@ The current ESLint config disables `no-explicit-any` and `no-unsafe-argument`. E
   - `@typescript-eslint/explicit-function-return-type`: warn
   - `prettier/prettier`: error
 - [ ] Run `npm run lint` and fix all errors
-- [ ] Add `lint-staged` to run ESLint on staged files before commit
-- [ ] Document the linting setup in CONTRIBUTING.md (create if not exists)
 - [ ] Verify `npm run lint` exits with code 0
+- [ ] Add `lint-staged` to run ESLint on staged files before commit
+- [ ] Document the linting setup in a new `CONTRIBUTING.md` file at the project root
