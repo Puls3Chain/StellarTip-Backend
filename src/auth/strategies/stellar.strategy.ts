@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-custom';
+import { Keypair } from '@stellar/stellar-sdk';
 import { AuthService } from '@auth/auth.service';
 
 @Injectable()
@@ -31,25 +32,23 @@ export class StellarStrategy extends PassportStrategy(Strategy, 'stellar') {
     return this.authService.validateStellarUser(walletAddress);
   }
 
-  private async verifyStellarSignature(
+  private verifyStellarSignature(
     address: string,
     message: string,
     signature: string,
   ): Promise<boolean> {
     try {
-      // TODO: Implement proper Stellar signature verification using @stellar/stellar-sdk
-      // const keypair = Keypair.fromPublicKey(address);
-      // return keypair.verify(Buffer.from(message), Buffer.from(signature, 'hex'));
-      //
-      // For development, we validate the signature exists and has expected format
       if (!signature || typeof signature !== 'string') {
-        return false;
+        return Promise.resolve(false);
       }
 
-      return true;
+      const keypair = Keypair.fromPublicKey(address);
+      return Promise.resolve(
+        keypair.verify(Buffer.from(message), Buffer.from(signature, 'base64')),
+      );
     } catch (error) {
       console.error('Error verifying Stellar signature:', error);
-      return false;
+      return Promise.resolve(false);
     }
   }
 }
