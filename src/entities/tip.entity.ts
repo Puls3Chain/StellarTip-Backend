@@ -54,6 +54,9 @@ export class Tip {
   })
   asset: TipAsset;
 
+  @Column({ name: 'asset_issuer', nullable: true })
+  assetIssuer: string | null;
+
   @Column({ nullable: true })
   message: string;
 

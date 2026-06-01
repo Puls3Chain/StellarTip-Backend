@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -17,12 +19,30 @@ import { StellarModule } from './stellar/stellar.module';
       envFilePath: '.env',
     }),
     TypeOrmModule.forRoot(typeormConfig),
+    ThrottlerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [
+          {
+            ttl: parseInt(config.get<string>('THROTTLE_TTL') || '60', 10) * 1000,
+            limit: parseInt(config.get<string>('GLOBAL_THROTTLE_LIMIT') || '100', 10),
+          },
+        ],
+      }),
+    }),
     AuthModule,
     TipsModule,
     ProfilesModule,
     StellarModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}
