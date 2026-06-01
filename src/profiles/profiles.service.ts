@@ -1,9 +1,12 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Tip, TipStatus } from '../entities/tip.entity';
 import { CreateProfileDto } from './dto/create-profile.dto';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class ProfilesService {
@@ -173,19 +176,50 @@ export class ProfilesService {
     return this.usersRepository.save(user);
   }
 
+  async uploadAvatar(userId: string, file: any): Promise<string> {
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      throw new BadRequestException(
+        `Unsupported file type: ${file.mimetype}. Allowed types: JPEG, PNG, WEBP`,
+      );
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      throw new BadRequestException('File size exceeds 5MB limit');
+    }
+
   async updateSocialLinks(userId: string, socialLinks: { twitter?: string; github?: string; youtube?: string; website?: string }) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    user.socialLinks = {
-      ...(user.socialLinks || {}),
-      ...socialLinks,
-    };
+    // Delete old avatar if it exists
+    if (user.avatarUrl) {
+      const oldPath = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars', path.basename(user.avatarUrl));
+      try {
+        fs.unlinkSync(oldPath);
+      } catch {
+        // File may not exist, ignore
+      }
+    }
 
+    // Save new avatar
+    const ext = file.originalname.split('.').pop() || 'png';
+    const filename = `${crypto.randomUUID()}.${ext}`;
+    const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars');
+
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    fs.writeFileSync(path.join(uploadDir, filename), file.buffer);
+
+    const avatarUrl = `/uploads/avatars/${filename}`;
+    user.avatarUrl = avatarUrl;
     await this.usersRepository.save(user);
-    return user.socialLinks;
+
+    return avatarUrl;
   }
 
   async searchProfiles(query: string) {

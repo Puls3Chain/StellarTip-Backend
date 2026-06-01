@@ -2,13 +2,20 @@ import {
   Controller,
   Get,
   Put,
+  Post,
   Patch,
   Body,
   Param,
   Query,
   UseGuards,
   Request,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipe,
+  MaxFileSizeValidator,
+  FileTypeValidator,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ProfilesService } from './profiles.service';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateSocialLinksDto } from './dto/update-social-links.dto';
@@ -49,5 +56,25 @@ export class ProfilesController {
     @Body() socialLinksDto: UpdateSocialLinksDto,
   ) {
     return this.profilesService.updateSocialLinks(req.user.id, socialLinksDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/avatar')
+  @UseInterceptors(FileInterceptor('avatar'))
+  async uploadAvatar(
+    @Request() req,
+    @UploadedFile(
+      new ParseFilePipe({
+        validators: [
+          new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
+          new FileTypeValidator({ fileType: /(image\/jpeg|image\/png|image\/webp)$/ }),
+        ],
+        fileIsRequired: true,
+      }),
+    )
+    file: any,
+  ) {
+    const avatarUrl = await this.profilesService.uploadAvatar(req.user.id, file);
+    return { avatarUrl };
   }
 }

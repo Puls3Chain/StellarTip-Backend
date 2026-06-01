@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 
@@ -19,17 +21,10 @@ import { StellarModule } from './stellar/stellar.module';
       envFilePath: '.env',
     }),
     TypeOrmModule.forRoot(typeormConfig),
-    ThrottlerModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        throttlers: [
-          {
-            ttl: parseInt(config.get<string>('THROTTLE_TTL') || '60', 10) * 1000,
-            limit: parseInt(config.get<string>('GLOBAL_THROTTLE_LIMIT') || '100', 10),
-          },
-        ],
-      }),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads',
+      serveStaticOptions: { index: false },
     }),
     AuthModule,
     TipsModule,
