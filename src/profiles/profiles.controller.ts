@@ -16,6 +16,11 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class ProfilesController {
   constructor(private readonly profilesService: ProfilesService) {}
 
+  @Get(':username/tipping-info')
+  async getTippingInfo(@Param('username') username: string) {
+    return this.profilesService.getTippingInfo(username);
+  }
+
   @Get(':username')
   async getProfile(@Param('username') username: string) {
     return this.profilesService.getProfile(username);
@@ -31,10 +36,7 @@ export class ProfilesController {
 
   @UseGuards(JwtAuthGuard)
   @Put('me')
-  async updateProfile(
-    @Request() req,
-    @Body() updateDto: CreateProfileDto,
-  ) {
+  async updateProfile(@Request() req, @Body() updateDto: CreateProfileDto) {
     return this.profilesService.updateProfile(req.user.id, updateDto);
   }
 }
