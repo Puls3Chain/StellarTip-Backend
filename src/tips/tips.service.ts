@@ -1,21 +1,40 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Tip, TipStatus, TipAsset } from '../entities/tip.entity';
 import { User } from '../entities/user.entity';
 import { CreateTipDto } from './dto/create-tip.dto';
 
 @Injectable()
 export class TipsService {
+  private readonly usdcIssuer: string | null;
+
   constructor(
     @InjectRepository(Tip)
     private tipsRepository: Repository<Tip>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) {}
+    private configService: ConfigService,
+  ) {
+    this.usdcIssuer =
+      this.configService.get<string>('USDC_ISSUER') || null;
+  }
 
   async createTip(createTipDto: CreateTipDto, supporterId?: string) {
-    const { receiverWallet, senderWallet, amount, message, asset, transactionHash } = createTipDto;
+    const {
+      receiverWallet,
+      senderWallet,
+      amount,
+      message,
+      asset,
+      assetIssuer,
+      transactionHash,
+    } = createTipDto;
 
     // Find creator by wallet address
     const creator = await this.usersRepository.findOne({
@@ -31,13 +50,35 @@ export class TipsService {
       throw new BadRequestException('Tip amount must be greater than 0');
     }
 
+    const tipAsset = (asset as TipAsset) || TipAsset.XLM;
+
+    // Validate and process USDC asset
+    if (tipAsset === TipAsset.USDC) {
+      if (!this.usdcIssuer) {
+        throw new BadRequestException(
+          'USDC tipping is not configured. Please set the USDC_ISSUER environment variable.',
+        );
+      }
+    }
+
+    // Validate unsupported asset types
+    if (!Object.values(TipAsset).includes(tipAsset)) {
+      throw new BadRequestException(
+        `Unsupported asset type: ${asset}. Supported asset types are: ${Object.values(TipAsset).join(', ')}`,
+      );
+    }
+
     const tip = new Tip();
     tip.creator = creator;
     tip.supporterId = supporterId || null;
     tip.senderWallet = senderWallet || '';
     tip.receiverWallet = receiverWallet;
     tip.amount = amount;
-    tip.asset = (asset as TipAsset) || TipAsset.XLM;
+    tip.asset = tipAsset;
+    tip.assetIssuer =
+      tipAsset === TipAsset.USDC
+        ? assetIssuer || this.usdcIssuer
+        : null;
     tip.message = message || '';
     tip.transactionHash = transactionHash || '';
     tip.status = transactionHash ? TipStatus.COMPLETED : TipStatus.PENDING;
@@ -132,9 +173,11 @@ export class TipsService {
       .select('COALESCE(SUM(tip.amount), 0)', 'totalAmount')
       .addSelect('COUNT(tip.id)', 'totalTips')
       .addSelect('tip.asset', 'asset')
+      .addSelect('tip.assetIssuer', 'assetIssuer')
       .where('tip.creatorId = :creatorId', { creatorId })
       .andWhere('tip.status = :status', { status: TipStatus.COMPLETED })
       .groupBy('tip.asset')
+      .addGroupBy('tip.assetIssuer')
       .getRawMany();
 
     return result;

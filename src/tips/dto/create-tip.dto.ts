@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, Min } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  Min,
+} from 'class-validator';
 
 export class CreateTipDto {
   @IsString()
@@ -20,6 +26,10 @@ export class CreateTipDto {
   @IsString()
   @IsOptional()
   asset?: string;
+
+  @IsString()
+  @IsOptional()
+  assetIssuer?: string;
 
   @IsString()
   @IsOptional()
