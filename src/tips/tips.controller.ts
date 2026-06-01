@@ -11,12 +11,14 @@ import {
 import { TipsService } from './tips.service';
 import { CreateTipDto } from './dto/create-tip.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { TipCreationThrottle } from '../config/throttle.config';
 
 @Controller('tips')
 export class TipsController {
   constructor(private readonly tipsService: TipsService) {}
 
   @Post()
+  @TipCreationThrottle()
   async createTip(@Body() createTipDto: CreateTipDto) {
     if (!createTipDto.senderWallet && !createTipDto.transactionHash) {
       throw new Error('senderWallet is required when no transactionHash is provided');
@@ -65,6 +67,7 @@ export class TipsController {
   }
 
   @Post(':id/confirm')
+  @TipCreationThrottle()
   async confirmTip(
     @Param('id') id: string,
     @Body('transactionHash') transactionHash: string,
