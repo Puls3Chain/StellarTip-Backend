@@ -57,6 +57,14 @@ export class AuthController {
     return this.authService.loginWithEmail(loginDto.email, loginDto.password);
   }
 
+  @Post('refresh')
+  async refresh(@Body('refresh_token') refreshToken: string) {
+    if (!refreshToken) {
+      throw new Error('refresh_token is required');
+    }
+    return this.authService.refreshToken(refreshToken);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   getProfile(@Request() req) {
