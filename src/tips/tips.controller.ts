@@ -6,10 +6,12 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { TipsService, TipFilterOptions } from './tips.service';
 import { CreateTipDto } from './dto/create-tip.dto';
+import { Tip } from '../entities/tip.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TipCreationThrottle } from '../config/throttle.config';
 
@@ -19,22 +21,24 @@ export class TipsController {
 
   @Post()
   @TipCreationThrottle()
-  async createTip(@Body() createTipDto: CreateTipDto) {
+  async createTip(@Body() createTipDto: CreateTipDto): Promise<Tip> {
     if (!createTipDto.senderWallet && !createTipDto.transactionHash) {
-      throw new Error('senderWallet is required when no transactionHash is provided');
+      throw new Error(
+        'senderWallet is required when no transactionHash is provided',
+      );
     }
     return this.tipsService.createTip(createTipDto);
   }
 
   @Get(':id')
-  async getTip(@Param('id') id: string) {
+  async getTip(@Param('id') id: string): Promise<Tip | null> {
     return this.tipsService.getTipById(id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('my/received')
   async getMyReceivedTips(
-    @Request() req,
+    @Req() req: Request,
     @Query('page') page = 1,
     @Query('limit') limit = 20,
     @Query('startDate') startDate?: string,
@@ -56,13 +60,14 @@ export class TipsController {
       sortBy,
       sortOrder,
     };
-    return this.tipsService.getTipsByCreator(req.user.id, filterOptions);
+
+    return this.tipsService.getTipsByCreator(req.user!.id, filterOptions);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('my/sent')
   async getMySentTips(
-    @Request() req,
+    @Req() req: Request,
     @Query('page') page = 1,
     @Query('limit') limit = 20,
     @Query('startDate') startDate?: string,
@@ -84,7 +89,8 @@ export class TipsController {
       sortBy,
       sortOrder,
     };
-    return this.tipsService.getTipsBySupporter(req.user.id, filterOptions);
+
+    return this.tipsService.getTipsBySupporter(req.user!.id, filterOptions);
   }
 
   @Get('wallet/:walletAddress')
@@ -99,7 +105,15 @@ export class TipsController {
     @Query('maxAmount') maxAmount?: number,
     @Query('sortBy') sortBy?: string,
     @Query('sortOrder') sortOrder?: 'ASC' | 'DESC',
-  ) {
+  ): Promise<{
+    data: Tip[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }> {
     const filterOptions: TipFilterOptions = {
       page: +page,
       limit: +limit,
@@ -116,8 +130,8 @@ export class TipsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('my/stats')
-  async getMyStats(@Request() req) {
-    return this.tipsService.getTipStats(req.user.id);
+  async getMyStats(@Req() req: Request) {
+    return this.tipsService.getTipStats(req.user!.id);
   }
 
   @Post(':id/confirm')
@@ -125,7 +139,7 @@ export class TipsController {
   async confirmTip(
     @Param('id') id: string,
     @Body('transactionHash') transactionHash: string,
-  ) {
+  ): Promise<Tip> {
     return this.tipsService.confirmTip(id, transactionHash);
   }
 }

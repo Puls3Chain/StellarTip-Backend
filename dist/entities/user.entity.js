@@ -28,6 +28,7 @@ let User = class User {
     displayName;
     bio;
     avatarUrl;
+    socialLinks;
     email;
     password;
     walletAddress;
@@ -68,6 +69,10 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], User.prototype, "avatarUrl", void 0);
+__decorate([
+    (0, typeorm_1.Column)('jsonb', { nullable: true }),
+    __metadata("design:type", Object)
+], User.prototype, "socialLinks", void 0);
 __decorate([
     (0, typeorm_1.Column)({ unique: true, nullable: true }),
     __metadata("design:type", String)

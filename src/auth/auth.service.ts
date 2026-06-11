@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -21,14 +25,15 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
   ) {
-    this.accessTokenExpiresIn = this.configService.get<string>('JWT_ACCESS_EXPIRATION') || '15m';
+    this.accessTokenExpiresIn =
+      this.configService.get<string>('JWT_ACCESS_EXPIRATION') || '15m';
     this.refreshTokenExpiresInDays = parseInt(
       this.configService.get<string>('JWT_REFRESH_EXPIRATION_DAYS') || '30',
       10,
     );
   }
 
-  async validateStellarUser(walletAddress: string) {
+  async validateStellarUser(walletAddress: string): Promise<User> {
     if (!walletAddress.startsWith('G') || walletAddress.length !== 56) {
       throw new UnauthorizedException('Invalid Stellar wallet address');
     }
@@ -53,14 +58,21 @@ export class AuthService {
     return user;
   }
 
-  async login(user: User) {
+  async login(user: User): Promise<{
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    user: Record<string, unknown>;
+  }> {
     const payload = {
       sub: user.id,
       role: user.role,
       authMethod: user.authMethod,
     };
 
-    const accessToken = this.jwtService.sign(payload, { expiresIn: this.accessTokenExpiresIn });
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: this.accessTokenExpiresIn,
+    });
     const refreshToken = await this.createRefreshToken(user.id);
 
     return {
@@ -78,13 +90,27 @@ export class AuthService {
     };
   }
 
-  async signup(email: string, password: string, username: string, displayName?: string) {
-    const existingEmail = await this.usersRepository.findOne({ where: { email } });
+  async signup(
+    email: string,
+    password: string,
+    username: string,
+    displayName?: string,
+  ): Promise<{
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    user: Record<string, unknown>;
+  }> {
+    const existingEmail = await this.usersRepository.findOne({
+      where: { email },
+    });
     if (existingEmail) {
       throw new ConflictException('Email already in use');
     }
 
-    const existingUsername = await this.usersRepository.findOne({ where: { username } });
+    const existingUsername = await this.usersRepository.findOne({
+      where: { username },
+    });
     if (existingUsername) {
       throw new ConflictException('Username already taken');
     }
@@ -103,7 +129,9 @@ export class AuthService {
     await this.usersRepository.save(user);
 
     const payload = { sub: user.id, role: user.role };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: this.accessTokenExpiresIn });
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: this.accessTokenExpiresIn,
+    });
     const refreshToken = await this.createRefreshToken(user.id);
 
     return {
@@ -120,10 +148,27 @@ export class AuthService {
     };
   }
 
-  async loginWithEmail(email: string, password: string) {
+  async loginWithEmail(
+    email: string,
+    password: string,
+  ): Promise<{
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+    user: Record<string, unknown>;
+  }> {
     const user = await this.usersRepository.findOne({
       where: { email },
-      select: ['id', 'email', 'password', 'username', 'displayName', 'role', 'authMethod', 'isActive'],
+      select: [
+        'id',
+        'email',
+        'password',
+        'username',
+        'displayName',
+        'role',
+        'authMethod',
+        'isActive',
+      ],
     });
 
     if (!user || !user.password) {
@@ -140,7 +185,9 @@ export class AuthService {
     }
 
     const payload = { sub: user.id, role: user.role };
-    const accessToken = this.jwtService.sign(payload, { expiresIn: this.accessTokenExpiresIn });
+    const accessToken = this.jwtService.sign(payload, {
+      expiresIn: this.accessTokenExpiresIn,
+    });
     const refreshToken = await this.createRefreshToken(user.id);
 
     return {
@@ -157,7 +204,11 @@ export class AuthService {
     };
   }
 
-  async refreshToken(token: string) {
+  async refreshToken(token: string): Promise<{
+    access_token: string;
+    refresh_token: string;
+    expires_in: number;
+  }> {
     const refreshToken = await this.refreshTokensRepository.findOne({
       where: { token, isRevoked: false },
       relations: ['user'],
@@ -176,10 +227,14 @@ export class AuthService {
     }
 
     // Rotate the refresh token (single-use)
-    await this.refreshTokensRepository.update(refreshToken.id, { isRevoked: true });
+    await this.refreshTokensRepository.update(refreshToken.id, {
+      isRevoked: true,
+    });
 
     const payload = { sub: refreshToken.user.id, role: refreshToken.user.role };
-    const newAccessToken = this.jwtService.sign(payload, { expiresIn: this.accessTokenExpiresIn });
+    const newAccessToken = this.jwtService.sign(payload, {
+      expiresIn: this.accessTokenExpiresIn,
+    });
     const newRefreshToken = await this.createRefreshToken(refreshToken.user.id);
 
     return {
@@ -189,14 +244,14 @@ export class AuthService {
     };
   }
 
-  async revokeUserRefreshTokens(userId: string) {
+  async revokeUserRefreshTokens(userId: string): Promise<void> {
     await this.refreshTokensRepository.update(
       { userId, isRevoked: false },
       { isRevoked: true },
     );
   }
 
-  async getNonce(walletAddress: string) {
+  getNonce(walletAddress: string): { nonce: string; message: string } {
     const nonce = Math.floor(Math.random() * 1000000).toString();
     const message = `StellarTip Authentication\n\nWallet: ${walletAddress}\nNonce: ${nonce}\n\nSign this message to authenticate with StellarTip.`;
 
@@ -222,11 +277,16 @@ export class AuthService {
     if (!match) return 900;
     const value = parseInt(match[1], 10);
     switch (match[2]) {
-      case 's': return value;
-      case 'm': return value * 60;
-      case 'h': return value * 3600;
-      case 'd': return value * 86400;
-      default: return 900;
+      case 's':
+        return value;
+      case 'm':
+        return value * 60;
+      case 'h':
+        return value * 3600;
+      case 'd':
+        return value * 86400;
+      default:
+        return 900;
     }
   }
 }

@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, FindOptionsWhere, MoreThanOrEqual, LessThanOrEqual, Between } from 'typeorm';
+import { Repository, MoreThanOrEqual, LessThanOrEqual, Between } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { Tip, TipStatus, TipAsset } from '../entities/tip.entity';
 import { User } from '../entities/user.entity';
@@ -36,13 +36,12 @@ export class TipsService {
     private usersRepository: Repository<User>,
     private configService: ConfigService,
   ) {
-    this.usdcIssuer =
-      this.configService.get<string>('USDC_ISSUER') || null;
+    this.usdcIssuer = this.configService.get<string>('USDC_ISSUER') || null;
   }
 
   private buildFilterQuery(filterOptions: TipFilterOptions): {
-    where: FindOptionsWhere<Tip> | FindOptionsWhere<Tip>[];
-    order: any;
+    where: Record<string, unknown>;
+    order: Record<string, string>;
     skip: number;
     take: number;
   } {
@@ -50,7 +49,8 @@ export class TipsService {
     const limit = filterOptions.limit || 20;
 
     if (page < 1) throw new BadRequestException('Page must be greater than 0');
-    if (limit < 1 || limit > 100) throw new BadRequestException('Limit must be between 1 and 100');
+    if (limit < 1 || limit > 100)
+      throw new BadRequestException('Limit must be between 1 and 100');
 
     const sortBy = filterOptions.sortBy || 'createdAt';
     const sortOrder = filterOptions.sortOrder || 'DESC';
@@ -66,7 +66,7 @@ export class TipsService {
       );
     }
 
-    const query: any = {};
+    const query: Record<string, unknown> = {};
 
     // Date range filters
     if (filterOptions.startDate && filterOptions.endDate) {
@@ -79,7 +79,9 @@ export class TipsService {
     } else if (filterOptions.startDate) {
       const startDate = new Date(filterOptions.startDate);
       if (isNaN(startDate.getTime())) {
-        throw new BadRequestException('Invalid startDate format. Use ISO 8601.');
+        throw new BadRequestException(
+          'Invalid startDate format. Use ISO 8601.',
+        );
       }
       query.createdAt = MoreThanOrEqual(startDate);
     } else if (filterOptions.endDate) {
@@ -102,24 +104,33 @@ export class TipsService {
     }
 
     // Amount range filters
-    if (filterOptions.minAmount !== undefined && filterOptions.maxAmount !== undefined) {
+    if (
+      filterOptions.minAmount !== undefined &&
+      filterOptions.maxAmount !== undefined
+    ) {
       if (filterOptions.minAmount < 0 || filterOptions.maxAmount < 0) {
-        throw new BadRequestException('Amount filters must be greater than or equal to 0');
+        throw new BadRequestException(
+          'Amount filters must be greater than or equal to 0',
+        );
       }
       query.amount = Between(filterOptions.minAmount, filterOptions.maxAmount);
     } else if (filterOptions.minAmount !== undefined) {
       if (filterOptions.minAmount < 0) {
-        throw new BadRequestException('minAmount must be greater than or equal to 0');
+        throw new BadRequestException(
+          'minAmount must be greater than or equal to 0',
+        );
       }
       query.amount = MoreThanOrEqual(filterOptions.minAmount);
     } else if (filterOptions.maxAmount !== undefined) {
       if (filterOptions.maxAmount < 0) {
-        throw new BadRequestException('maxAmount must be greater than or equal to 0');
+        throw new BadRequestException(
+          'maxAmount must be greater than or equal to 0',
+        );
       }
       query.amount = LessThanOrEqual(filterOptions.maxAmount);
     }
 
-    const order: any = {};
+    const order: Record<string, string> = {};
     order[sortBy] = sortOrder;
 
     return {
@@ -130,7 +141,20 @@ export class TipsService {
     };
   }
 
-  private formatPaginatedResult(tips: Tip[], total: number, page: number, limit: number) {
+  private formatPaginatedResult(
+    tips: Tip[],
+    total: number,
+    page: number,
+    limit: number,
+  ): {
+    data: Tip[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  } {
     const totalPages = Math.ceil(total / limit);
     return {
       data: tips,
@@ -143,7 +167,10 @@ export class TipsService {
     };
   }
 
-  async createTip(createTipDto: CreateTipDto, supporterId?: string) {
+  async createTip(
+    createTipDto: CreateTipDto,
+    supporterId?: string,
+  ): Promise<Tip> {
     const {
       receiverWallet,
       senderWallet,
@@ -192,9 +219,7 @@ export class TipsService {
     tip.amount = amount;
     tip.asset = tipAsset;
     tip.assetIssuer =
-      tipAsset === TipAsset.USDC
-        ? assetIssuer || this.usdcIssuer
-        : null;
+      tipAsset === TipAsset.USDC ? assetIssuer || this.usdcIssuer : null;
     tip.message = message || '';
     tip.transactionHash = transactionHash || '';
     tip.status = transactionHash ? TipStatus.COMPLETED : TipStatus.PENDING;
@@ -202,7 +227,7 @@ export class TipsService {
     return this.tipsRepository.save(tip);
   }
 
-  async getTipById(id: string) {
+  async getTipById(id: string): Promise<Tip> {
     const tip = await this.tipsRepository.findOne({
       where: { id },
       relations: ['creator', 'supporter'],
@@ -215,58 +240,125 @@ export class TipsService {
     return tip;
   }
 
-  async getTipsByCreator(creatorId: string, filterOptions: TipFilterOptions = {}) {
+  async getTipsByCreator(
+    creatorId: string,
+    filterOptions: TipFilterOptions = {},
+  ): Promise<{
+    data: Tip[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }> {
     const baseQuery = { creatorId };
     const { where, order, skip, take } = this.buildFilterQuery(filterOptions);
 
     const finalWhere = { ...baseQuery, ...where };
 
+    // TypeORM findAndCount accepts broad where shapes
+    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
     const [tips, total] = await this.tipsRepository.findAndCount({
       where: finalWhere as any,
       relations: ['supporter'],
-      order,
+      order: order,
       skip,
       take,
     });
+    /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
 
-    return this.formatPaginatedResult(tips, total, filterOptions.page || 1, filterOptions.limit || 20);
+    return this.formatPaginatedResult(
+      tips,
+      total,
+      filterOptions.page || 1,
+      filterOptions.limit || 20,
+    );
   }
 
-  async getTipsBySupporter(supporterId: string, filterOptions: TipFilterOptions = {}) {
+  async getTipsBySupporter(
+    supporterId: string,
+    filterOptions: TipFilterOptions = {},
+  ): Promise<{
+    data: Tip[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }> {
     const { where, order, skip, take } = this.buildFilterQuery(filterOptions);
     const finalWhere = { supporterId, ...where };
 
+    // TypeORM findAndCount accepts broad where shapes
+    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
     const [tips, total] = await this.tipsRepository.findAndCount({
       where: finalWhere as any,
       relations: ['creator'],
-      order,
+      order: order,
       skip,
       take,
     });
+    /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
 
-    return this.formatPaginatedResult(tips, total, filterOptions.page || 1, filterOptions.limit || 20);
+    return this.formatPaginatedResult(
+      tips,
+      total,
+      filterOptions.page || 1,
+      filterOptions.limit || 20,
+    );
   }
 
-  async getTipsByWallet(walletAddress: string, filterOptions: TipFilterOptions = {}) {
-    const { where: filterWhere, order, skip, take } = this.buildFilterQuery(filterOptions);
+  async getTipsByWallet(
+    walletAddress: string,
+    filterOptions: TipFilterOptions = {},
+  ): Promise<{
+    data: Tip[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }> {
+    const {
+      where: filterWhere,
+      order,
+      skip,
+      take,
+    } = this.buildFilterQuery(filterOptions);
 
+    /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
     const where: any[] = [
-      { receiverWallet: walletAddress, ...filterWhere },
-      { senderWallet: walletAddress, ...filterWhere },
+      {
+        receiverWallet: walletAddress,
+        ...filterWhere,
+      },
+      {
+        senderWallet: walletAddress,
+        ...filterWhere,
+      },
     ];
 
     const [tips, total] = await this.tipsRepository.findAndCount({
       where: where as any,
       relations: ['creator', 'supporter'],
-      order,
+      order: order,
       skip,
       take,
     });
+    /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
 
-    return this.formatPaginatedResult(tips, total, filterOptions.page || 1, filterOptions.limit || 20);
+    return this.formatPaginatedResult(
+      tips,
+      total,
+      filterOptions.page || 1,
+      filterOptions.limit || 20,
+    );
   }
 
-  async confirmTip(id: string, transactionHash: string) {
+  async confirmTip(id: string, transactionHash: string): Promise<Tip> {
     const tip = await this.tipsRepository.findOne({ where: { id } });
     if (!tip) {
       throw new NotFoundException('Tip not found');
@@ -277,7 +369,9 @@ export class TipsService {
     return this.tipsRepository.save(tip);
   }
 
-  async getTipStats(creatorId: string) {
+  async getTipStats(creatorId: string): Promise<Tip[]> {
+    // getRawMany() returns any from TypeORM; typed assertion at return boundary
+
     const result = await this.tipsRepository
       .createQueryBuilder('tip')
       .select('COALESCE(SUM(tip.amount), 0)', 'totalAmount')
@@ -290,6 +384,7 @@ export class TipsService {
       .addGroupBy('tip.assetIssuer')
       .getRawMany();
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return result;
   }
 }

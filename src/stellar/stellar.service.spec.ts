@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call */
 import { Test, TestingModule } from '@nestjs/testing';
 import { StellarService } from './stellar.service';
 import { ConfigService } from '@nestjs/config';
@@ -36,11 +37,12 @@ describe('StellarService', () => {
       {
         asset_type: 'credit_alphanum4',
         asset_code: 'USDC',
-        asset_issuer: 'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
+        asset_issuer:
+          'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5',
         balance: '50.0000000',
       },
     ],
-    sequenceNumber: '123456789',
+    sequenceNumber: jest.fn().mockReturnValue('123456789'),
     subentry_count: 2,
   });
 
@@ -139,9 +141,9 @@ describe('StellarService', () => {
     it('should verify a valid transaction', async () => {
       // Mock the transaction call
       const txBuilder = (service as any).server.transactions();
-      txBuilder.transaction('valid-tx-hash').call.mockResolvedValue(
-        createMockTx(),
-      );
+      txBuilder
+        .transaction('valid-tx-hash')
+        .call.mockResolvedValue(createMockTx());
 
       const result = await service.verifyPayment('valid-tx-hash');
 

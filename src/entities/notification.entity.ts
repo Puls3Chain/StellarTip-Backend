@@ -41,6 +41,7 @@ export class Notification {
   isRead: boolean;
 
   @Column('jsonb', { nullable: true })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata: Record<string, any> | null;
 
   @CreateDateColumn()

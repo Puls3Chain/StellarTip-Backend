@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -7,7 +8,9 @@ import { User } from '../entities/user.entity';
 
 describe('TipsService', () => {
   let service: TipsService;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let tipsRepository: any;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let usersRepository: any;
 
   const mockTip: any = {

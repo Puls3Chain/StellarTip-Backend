@@ -8,35 +8,39 @@ import {
   Param,
   Query,
   UseGuards,
-  Request,
+  Req,
   UseInterceptors,
   UploadedFile,
   ParseFilePipe,
   MaxFileSizeValidator,
   FileTypeValidator,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ProfilesService } from './profiles.service';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateSocialLinksDto } from './dto/update-social-links.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { User } from '../entities/user.entity';
 
 @Controller('profiles')
 export class ProfilesController {
   constructor(private readonly profilesService: ProfilesService) {}
 
   @Get(':username/tipping-info')
-  async getTippingInfo(@Param('username') username: string) {
+  async getTippingInfo(
+    @Param('username') username: string,
+  ): Promise<Record<string, unknown>> {
     return this.profilesService.getTippingInfo(username);
   }
 
   @Get(':username')
-  async getProfile(@Param('username') username: string) {
+  async getProfile(@Param('username') username: string): Promise<User | null> {
     return this.profilesService.getProfile(username);
   }
 
   @Get()
-  async searchProfiles(@Query('q') query: string) {
+  async searchProfiles(@Query('q') query: string): Promise<User[]> {
     if (!query) {
       return [];
     }
@@ -45,36 +49,47 @@ export class ProfilesController {
 
   @UseGuards(JwtAuthGuard)
   @Put('me')
-  async updateProfile(@Request() req, @Body() updateDto: CreateProfileDto) {
-    return this.profilesService.updateProfile(req.user.id, updateDto);
+  async updateProfile(
+    @Req() req: Request,
+    @Body() updateDto: CreateProfileDto,
+  ): Promise<User> {
+    return this.profilesService.updateProfile(req.user!.id, updateDto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('me/social-links')
   async updateSocialLinks(
-    @Request() req,
+    @Req() req: Request,
     @Body() socialLinksDto: UpdateSocialLinksDto,
-  ) {
-    return this.profilesService.updateSocialLinks(req.user.id, socialLinksDto);
+  ): Promise<User> {
+    return this.profilesService.updateSocialLinks(req.user!.id, socialLinksDto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('me/avatar')
   @UseInterceptors(FileInterceptor('avatar'))
   async uploadAvatar(
-    @Request() req,
+    @Req() req: Request,
     @UploadedFile(
       new ParseFilePipe({
         validators: [
           new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }),
-          new FileTypeValidator({ fileType: /(image\/jpeg|image\/png|image\/webp)$/ }),
+          new FileTypeValidator({
+            fileType: /(image\/jpeg|image\/png|image\/webp)$/,
+          }),
         ],
         fileIsRequired: true,
       }),
     )
-    file: any,
-  ) {
-    const avatarUrl = await this.profilesService.uploadAvatar(req.user.id, file);
+    file: {
+      mimetype: string;
+      size: number;
+      originalname: string;
+      buffer: Buffer;
+    },
+  ): Promise<{ avatarUrl: string }> {
+    const userId = req.user!.id;
+    const avatarUrl = await this.profilesService.uploadAvatar(userId, file);
     return { avatarUrl };
   }
 }
