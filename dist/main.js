@@ -30,5 +30,5 @@ async function bootstrap() {
         process.exit(1);
     }
 }
-bootstrap();
+void bootstrap();
 //# sourceMappingURL=main.js.map

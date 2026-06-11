@@ -18,6 +18,7 @@ import {
 import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { CacheInterceptor } from '@nestjs/cache-manager';
 import { ProfilesService } from './profiles.service';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateSocialLinksDto } from './dto/update-social-links.dto';
@@ -49,9 +50,10 @@ export class ProfilesController {
     return this.profilesService.searchProfiles(query);
   }
 
-  @ApiOperation({ summary: 'Get creator analytics dashboard' })
+  @ApiOperation({ summary: 'Get creator analytics dashboard (cached 5 min)' })
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(CacheInterceptor)
   @Get('me/analytics')
   async getAnalytics(
     @Req() req: Request,

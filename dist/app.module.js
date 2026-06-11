@@ -22,6 +22,7 @@ const tips_module_1 = require("./tips/tips.module");
 const profiles_module_1 = require("./profiles/profiles.module");
 const stellar_module_1 = require("./stellar/stellar.module");
 const notifications_module_1 = require("./notifications/notifications.module");
+const health_module_1 = require("./health/health.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -43,6 +44,7 @@ exports.AppModule = AppModule = __decorate([
             profiles_module_1.ProfilesModule,
             stellar_module_1.StellarModule,
             notifications_module_1.NotificationsModule,
+            health_module_1.HealthModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [

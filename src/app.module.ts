@@ -5,6 +5,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { CacheModule } from '@nestjs/cache-manager';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -36,6 +37,13 @@ import { SharedModule } from './shared/shared.module';
     NotificationsModule,
     HealthModule,
     SharedModule,
+    CacheModule.registerAsync({
+      isGlobal: true,
+      useFactory: () => ({
+        ttl: 300000, // 5 minutes (ms)
+        max: 100,
+      }),
+    }),
   ],
   controllers: [AppController],
   providers: [
