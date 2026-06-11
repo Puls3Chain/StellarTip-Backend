@@ -17,12 +17,14 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ProfilesService } from './profiles.service';
 import { CreateProfileDto } from './dto/create-profile.dto';
 import { UpdateSocialLinksDto } from './dto/update-social-links.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { User } from '../entities/user.entity';
 
+@ApiTags('profiles')
 @Controller('profiles')
 export class ProfilesController {
   constructor(private readonly profilesService: ProfilesService) {}
@@ -45,6 +47,18 @@ export class ProfilesController {
       return [];
     }
     return this.profilesService.searchProfiles(query);
+  }
+
+  @ApiOperation({ summary: 'Get creator analytics dashboard' })
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @Get('me/analytics')
+  async getAnalytics(
+    @Req() req: Request,
+    @Query('period') period?: string,
+    @Query('asset') asset?: string,
+  ): Promise<Record<string, unknown>> {
+    return this.profilesService.getAnalytics(req.user!.id, period, asset);
   }
 
   @UseGuards(JwtAuthGuard)
