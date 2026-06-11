@@ -8,8 +8,10 @@ import {
   Post,
   Body,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { StellarService } from './stellar.service';
 
+@ApiTags('stellar')
 @Controller('stellar')
 export class StellarController {
   private readonly logger = new Logger(StellarController.name);

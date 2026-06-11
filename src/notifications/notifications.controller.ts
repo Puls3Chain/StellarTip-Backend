@@ -8,9 +8,11 @@ import {
   Req,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { ApiTags } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
+@ApiTags('notifications')
 @Controller('notifications')
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 export class NotificationsController {

@@ -9,12 +9,14 @@ import {
   Req,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { ApiTags } from '@nestjs/swagger';
 import { TipsService, TipFilterOptions } from './tips.service';
 import { CreateTipDto } from './dto/create-tip.dto';
 import { Tip } from '../entities/tip.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TipCreationThrottle } from '../config/throttle.config';
 
+@ApiTags('tips')
 @Controller('tips')
 export class TipsController {
   constructor(private readonly tipsService: TipsService) {}
