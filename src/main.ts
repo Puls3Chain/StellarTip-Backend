@@ -3,7 +3,7 @@ import { AppModule } from './app.module';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
   try {
     const app = await NestFactory.create(AppModule);
@@ -38,4 +38,4 @@ async function bootstrap() {
   }
 }
 
-bootstrap();
+void bootstrap();

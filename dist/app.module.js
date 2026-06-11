@@ -10,6 +10,10 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const typeorm_1 = require("@nestjs/typeorm");
+const serve_static_1 = require("@nestjs/serve-static");
+const path_1 = require("path");
+const throttler_1 = require("@nestjs/throttler");
+const core_1 = require("@nestjs/core");
 const app_controller_1 = require("./app.controller");
 const app_service_1 = require("./app.service");
 const typeorm_config_1 = require("./config/typeorm.config");
@@ -17,6 +21,7 @@ const auth_module_1 = require("./auth/auth.module");
 const tips_module_1 = require("./tips/tips.module");
 const profiles_module_1 = require("./profiles/profiles.module");
 const stellar_module_1 = require("./stellar/stellar.module");
+const notifications_module_1 = require("./notifications/notifications.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -28,13 +33,25 @@ exports.AppModule = AppModule = __decorate([
                 envFilePath: '.env',
             }),
             typeorm_1.TypeOrmModule.forRoot(typeorm_config_1.default),
+            serve_static_1.ServeStaticModule.forRoot({
+                rootPath: (0, path_1.join)(__dirname, '..', 'uploads'),
+                serveRoot: '/uploads',
+                serveStaticOptions: { index: false },
+            }),
             auth_module_1.AuthModule,
             tips_module_1.TipsModule,
             profiles_module_1.ProfilesModule,
             stellar_module_1.StellarModule,
+            notifications_module_1.NotificationsModule,
         ],
         controllers: [app_controller_1.AppController],
-        providers: [app_service_1.AppService],
+        providers: [
+            app_service_1.AppService,
+            {
+                provide: core_1.APP_GUARD,
+                useClass: throttler_1.ThrottlerGuard,
+            },
+        ],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

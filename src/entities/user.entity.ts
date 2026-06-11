@@ -38,7 +38,12 @@ export class User {
   avatarUrl: string;
 
   @Column('jsonb', { nullable: true })
-  socialLinks: { twitter?: string; github?: string; youtube?: string; website?: string } | null;
+  socialLinks: {
+    twitter?: string;
+    github?: string;
+    youtube?: string;
+    website?: string;
+  } | null;
 
   @Column({ unique: true, nullable: true })
   email: string;
@@ -80,7 +85,7 @@ export class User {
 
   @BeforeInsert()
   @BeforeUpdate()
-  validateAuthMethod() {
+  validateAuthMethod(): void {
     if (this.authMethod === AuthMethod.EMAIL && !this.email) {
       throw new Error('Email is required for email authentication');
     }

@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-custom';
 import { Keypair } from '@stellar/stellar-sdk';
 import { AuthService } from '@auth/auth.service';
+import { User } from '../../entities/user.entity';
 
 @Injectable()
 export class StellarStrategy extends PassportStrategy(Strategy, 'stellar') {
@@ -10,8 +11,14 @@ export class StellarStrategy extends PassportStrategy(Strategy, 'stellar') {
     super();
   }
 
-  async validate(req: any) {
-    const { walletAddress, message, signature } = req.body;
+  // req is typed as any because passport-custom strategy doesn't provide typed request
+  /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access */
+  async validate(req: any): Promise<User> {
+    const { walletAddress, message, signature } = req.body as {
+      walletAddress?: string;
+      message?: string;
+      signature?: string;
+    };
 
     if (!walletAddress || !message || !signature) {
       throw new UnauthorizedException('Missing required fields');
@@ -30,6 +37,7 @@ export class StellarStrategy extends PassportStrategy(Strategy, 'stellar') {
 
     // Find or create user
     return this.authService.validateStellarUser(walletAddress);
+    /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access */
   }
 
   private verifyStellarSignature(

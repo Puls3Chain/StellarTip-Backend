@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
@@ -17,7 +22,7 @@ export class ProfilesService {
     private tipsRepository: Repository<Tip>,
   ) {}
 
-  async getProfile(username: string) {
+  async getProfile(username: string): Promise<User | null> {
     const user = await this.usersRepository.findOne({
       where: { username, isActive: true },
       select: [
@@ -39,7 +44,7 @@ export class ProfilesService {
     return user;
   }
 
-  async getProfileById(id: string) {
+  async getProfileById(id: string): Promise<User | null> {
     const user = await this.usersRepository.findOne({
       where: { id, isActive: true },
       select: [
@@ -60,7 +65,7 @@ export class ProfilesService {
     return user;
   }
 
-  async getTippingInfo(username: string) {
+  async getTippingInfo(username: string): Promise<Record<string, unknown>> {
     const user = await this.usersRepository.findOne({
       where: { username, isActive: true },
       select: [
@@ -78,6 +83,8 @@ export class ProfilesService {
       throw new NotFoundException('Profile not found');
     }
 
+    // getRawOne() returns any from TypeORM; disable type checking for query builder results
+    /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
     // Get total tips received
     const statsResult = await this.tipsRepository
       .createQueryBuilder('tip')
@@ -137,9 +144,13 @@ export class ProfilesService {
         createdAt: tip.createdAt,
       })),
     };
+    /* eslint-enable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
   }
 
-  async updateProfile(userId: string, updateDto: CreateProfileDto) {
+  async updateProfile(
+    userId: string,
+    updateDto: CreateProfileDto,
+  ): Promise<User> {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
 
     if (!user) {
@@ -159,12 +170,17 @@ export class ProfilesService {
     return this.usersRepository.save(user);
   }
 
-  async updateWalletAddress(userId: string, walletAddress: string) {
+  async updateWalletAddress(
+    userId: string,
+    walletAddress: string,
+  ): Promise<User> {
     const existing = await this.usersRepository.findOne({
       where: { walletAddress },
     });
     if (existing && existing.id !== userId) {
-      throw new ConflictException('Wallet address already linked to another account');
+      throw new ConflictException(
+        'Wallet address already linked to another account',
+      );
     }
 
     const user = await this.usersRepository.findOne({ where: { id: userId } });
@@ -176,7 +192,15 @@ export class ProfilesService {
     return this.usersRepository.save(user);
   }
 
-  async uploadAvatar(userId: string, file: any): Promise<string> {
+  async uploadAvatar(
+    userId: string,
+    file: {
+      mimetype: string;
+      size: number;
+      originalname: string;
+      buffer: Buffer;
+    },
+  ): Promise<string> {
     const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowedMimeTypes.includes(file.mimetype)) {
       throw new BadRequestException(
@@ -188,7 +212,6 @@ export class ProfilesService {
       throw new BadRequestException('File size exceeds 5MB limit');
     }
 
-  async updateSocialLinks(userId: string, socialLinks: { twitter?: string; github?: string; youtube?: string; website?: string }) {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
@@ -196,7 +219,15 @@ export class ProfilesService {
 
     // Delete old avatar if it exists
     if (user.avatarUrl) {
-      const oldPath = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars', path.basename(user.avatarUrl));
+      const oldPath = path.join(
+        __dirname,
+        '..',
+        '..',
+        '..',
+        'uploads',
+        'avatars',
+        path.basename(user.avatarUrl),
+      );
       try {
         fs.unlinkSync(oldPath);
       } catch {
@@ -207,7 +238,14 @@ export class ProfilesService {
     // Save new avatar
     const ext = file.originalname.split('.').pop() || 'png';
     const filename = `${crypto.randomUUID()}.${ext}`;
-    const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars');
+    const uploadDir = path.join(
+      __dirname,
+      '..',
+      '..',
+      '..',
+      'uploads',
+      'avatars',
+    );
 
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -222,7 +260,37 @@ export class ProfilesService {
     return avatarUrl;
   }
 
-  async searchProfiles(query: string) {
+  async updateSocialLinks(
+    userId: string,
+    socialLinks: {
+      twitter?: string;
+      github?: string;
+      youtube?: string;
+      website?: string;
+    },
+  ): Promise<User> {
+    const user = await this.usersRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Validate URLs
+    const urlPattern = /^https:\/\//;
+    const platforms = ['twitter', 'github', 'youtube', 'website'] as const;
+    for (const platform of platforms) {
+      const link = socialLinks[platform];
+      if (link && !urlPattern.test(link)) {
+        throw new BadRequestException(
+          `Invalid ${platform} URL: must start with https://`,
+        );
+      }
+    }
+
+    user.socialLinks = socialLinks;
+    return this.usersRepository.save(user);
+  }
+
+  async searchProfiles(query: string): Promise<User[]> {
     return this.usersRepository
       .createQueryBuilder('user')
       .where('user.isActive = :active', { active: true })

@@ -16,7 +16,9 @@ describe('AppController', () => {
 
   describe('root', () => {
     it('should return the StellarTip API message', () => {
-      expect(appController.getHello()).toBe('StellarTip API — Decentralized micro-tipping on Stellar');
+      expect(appController.getHello()).toBe(
+        'StellarTip API — Decentralized micro-tipping on Stellar',
+      );
     });
   });
 });

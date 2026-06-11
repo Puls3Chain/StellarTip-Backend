@@ -1,7 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Notification, NotificationType } from '../entities/notification.entity';
+import {
+  Notification,
+  NotificationType,
+} from '../entities/notification.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -15,8 +18,9 @@ export class NotificationsService {
     type: NotificationType,
     title: string,
     message: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     metadata?: Record<string, any>,
-  ) {
+  ): Promise<Notification> {
     const notification = new Notification();
     notification.userId = userId;
     notification.type = type;
@@ -27,13 +31,26 @@ export class NotificationsService {
     return this.notificationsRepository.save(notification);
   }
 
-  async getNotifications(userId: string, page = 1, limit = 20) {
-    const [notifications, total] = await this.notificationsRepository.findAndCount({
-      where: { userId },
-      order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+  async getNotifications(
+    userId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{
+    data: Notification[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  }> {
+    const [notifications, total] =
+      await this.notificationsRepository.findAndCount({
+        where: { userId },
+        order: { createdAt: 'DESC' },
+        skip: (page - 1) * limit,
+        take: limit,
+      });
 
     return {
       data: notifications,
@@ -46,7 +63,10 @@ export class NotificationsService {
     };
   }
 
-  async markAsRead(notificationId: string, userId: string) {
+  async markAsRead(
+    notificationId: string,
+    userId: string,
+  ): Promise<Notification> {
     const notification = await this.notificationsRepository.findOne({
       where: { id: notificationId, userId },
     });
@@ -59,7 +79,7 @@ export class NotificationsService {
     return this.notificationsRepository.save(notification);
   }
 
-  async getUnreadCount(userId: string) {
+  async getUnreadCount(userId: string): Promise<{ unreadCount: number }> {
     const count = await this.notificationsRepository.count({
       where: { userId, isRead: false },
     });
@@ -72,7 +92,7 @@ export class NotificationsService {
     senderWallet: string,
     amount: number,
     asset: string,
-  ) {
+  ): Promise<Notification> {
     return this.createNotification(
       creatorId,
       NotificationType.TIP_RECEIVED,

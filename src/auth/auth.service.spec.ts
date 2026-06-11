@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -7,12 +8,16 @@ import { AuthService } from './auth.service';
 import { User, AuthMethod, UserRole } from '../entities/user.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
 
-const VALID_STELLAR_ADDRESS = 'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const VALID_STELLAR_ADDRESS =
+  'GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 describe('AuthService', () => {
   let service: AuthService;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let usersRepository: any;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let refreshTokensRepository: any;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   let jwtService: any;
 
   const mockUser: any = {

@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsUrl, MaxLength } from 'class-validator';
+import { IsOptional, IsUrl, MaxLength } from 'class-validator';
 
 export class UpdateSocialLinksDto {
   @IsOptional()

@@ -1,4 +1,8 @@
-import { AuthThrottle, TipCreationThrottle, SkipApiThrottle } from './throttle.config';
+import {
+  AuthThrottle,
+  TipCreationThrottle,
+  SkipApiThrottle,
+} from './throttle.config';
 
 describe('ThrottleConfig', () => {
   describe('AuthThrottle', () => {

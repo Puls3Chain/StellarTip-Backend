@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Horizon, Networks } from '@stellar/stellar-sdk';
+import { Horizon } from '@stellar/stellar-sdk';
 
 @Injectable()
 export class StellarService implements OnModuleInit {
@@ -10,7 +10,7 @@ export class StellarService implements OnModuleInit {
 
   constructor(private configService: ConfigService) {}
 
-  onModuleInit() {
+  onModuleInit(): void {
     const serverUrl =
       this.configService.get<string>('STELLAR_NODE_URL') ||
       'https://horizon-testnet.stellar.org';
@@ -39,21 +39,25 @@ export class StellarService implements OnModuleInit {
         return { verified: false };
       }
 
-      const operation = (tx as any).operations?.[0];
-      const from = (tx as any).source_account || '';
+      // Access SDK response fields with type assertion (external Stellar SDK)
+      /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+      const txAny = tx as any;
+      const operation = txAny.operations?.[0];
+      const from: string = txAny.source_account || '';
       let to = '';
       let amount = 0;
       let asset = 'XLM';
 
       if (operation) {
-        to = (operation as any).to || (operation as any).destination || '';
+        to = operation.to || operation.destination || '';
         amount = parseFloat(
-          (operation as any).amount || (operation as any).starting_balance || '0',
+          operation.amount || operation.starting_balance || '0',
         );
-        if ((operation as any).asset_type === 'credit_alphanum4') {
-          asset = `${(operation as any).asset_code}:${(operation as any).asset_issuer}`;
+        if (operation.asset_type === 'credit_alphanum4') {
+          asset = `${operation.asset_code}:${operation.asset_issuer}`;
         }
       }
+      /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 
       return {
         verified: true,
@@ -62,9 +66,10 @@ export class StellarService implements OnModuleInit {
         amount,
         asset,
       };
-    } catch (error) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to verify transaction ${transactionHash}: ${error.message}`,
+        `Failed to verify transaction ${transactionHash}: ${message}`,
       );
       return { verified: false };
     }
@@ -75,36 +80,54 @@ export class StellarService implements OnModuleInit {
   }> {
     try {
       const account = await this.server.loadAccount(walletAddress);
-      const balances = account.balances.map((b: any) => ({
-        asset:
-          b.asset_type === 'native'
-            ? 'XLM'
-            : `${b.asset_code}:${b.asset_issuer}`,
-        balance: b.balance,
-      }));
+      const balances = account.balances.map((b) => {
+        if (b.asset_type === 'native') {
+          return { asset: 'XLM', balance: b.balance };
+        }
+        // Access credit/issuer fields with type assertion for Stellar SDK union type
+        /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+        const credit = b as any;
+        return {
+          asset: `${credit.asset_code}:${credit.asset_issuer}`,
+          balance: credit.balance,
+        };
+        /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+      });
 
       return { balances };
-    } catch (error) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to fetch balance for ${walletAddress}: ${error.message}`,
+        `Failed to fetch balance for ${walletAddress}: ${message}`,
       );
       return { balances: [] };
     }
   }
 
-  async getAccountInfo(walletAddress: string) {
+  async getAccountInfo(walletAddress: string): Promise<{
+    address: string;
+    exists: boolean;
+    sequenceNumber: string | null;
+    subentryCount: number;
+    network: string;
+  }> {
     try {
       const account = await this.server.loadAccount(walletAddress);
+      // Access SDK response fields with type assertion (external Stellar SDK)
+      /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+      const accountAny = account as any;
       return {
         address: walletAddress,
         exists: true,
-        sequenceNumber: account.sequenceNumber,
-        subentryCount: (account as any).subentry_count || 0,
+        sequenceNumber: account.sequenceNumber(),
+        subentryCount: accountAny.subentry_count || 0,
+        /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
         network: this.network,
       };
-    } catch (error) {
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
-        `Failed to fetch account info for ${walletAddress}: ${error.message}`,
+        `Failed to fetch account info for ${walletAddress}: ${message}`,
       );
       return {
         address: walletAddress,

@@ -17,8 +17,9 @@ import { RefreshToken } from '../entities/refresh-token.entity';
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => {
-        const expiresIn = configService.get<string>('JWT_ACCESS_EXPIRATION') || '15m';
+      useFactory: (configService: ConfigService) => {
+        const expiresIn =
+          configService.get<string>('JWT_ACCESS_EXPIRATION') || '15m';
         return {
           secret: configService.get<string>('JWT_SECRET') || 'your-secret-key',
           signOptions: { expiresIn },

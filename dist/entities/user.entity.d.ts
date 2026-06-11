@@ -13,6 +13,12 @@ export declare class User {
     displayName: string;
     bio: string;
     avatarUrl: string;
+    socialLinks: {
+        twitter?: string;
+        github?: string;
+        youtube?: string;
+        website?: string;
+    } | null;
     email: string;
     password: string;
     walletAddress: string;
