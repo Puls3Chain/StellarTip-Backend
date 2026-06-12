@@ -4,7 +4,7 @@ import {
   ExecutionContext,
   CallHandler,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -12,6 +12,7 @@ export interface SuccessResponse<T> {
   success: true;
   statusCode: number;
   data: T;
+  requestId: string;
   timestamp: string;
 }
 
@@ -25,12 +26,18 @@ export class ResponseInterceptor<T>
   ): Observable<SuccessResponse<T>> {
     const httpCtx = context.switchToHttp();
     const httpResponse = httpCtx.getResponse<Response>();
+    const httpRequest = httpCtx.getRequest<Request>();
+    const requestId =
+      (httpRequest as unknown as Record<string, unknown>)['requestId'] as
+        | string
+        | undefined ?? '';
 
     return next.handle().pipe(
       map((responseBody: T) => ({
         success: true as const,
         statusCode: httpResponse.statusCode,
         data: responseBody,
+        requestId,
         timestamp: new Date().toISOString(),
       })),
     );
