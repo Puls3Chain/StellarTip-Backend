@@ -61,7 +61,7 @@ export class StellarStrategy extends PassportStrategy(Strategy, 'stellar') {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
         'Error verifying Stellar signature: ' + message,
-        undefined,
+        error instanceof Error ? error.stack : undefined,
         'StellarStrategy',
       );
       return Promise.resolve(false);
