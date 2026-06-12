@@ -369,10 +369,17 @@ export class TipsService {
     return this.tipsRepository.save(tip);
   }
 
-  async getTipStats(creatorId: string): Promise<Tip[]> {
-    // getRawMany() returns any from TypeORM; typed assertion at return boundary
+  async getTipStats(creatorId: string): Promise<
+    Array<{
+      totalAmount: string;
+      totalTips: string;
+      asset: string;
+      assetIssuer: string | null;
+    }>
+  > {
+    // getRawMany() returns any from TypeORM; mapped to typed array
 
-    const result = await this.tipsRepository
+    const result: Array<Record<string, unknown>> = await this.tipsRepository
       .createQueryBuilder('tip')
       .select('COALESCE(SUM(tip.amount), 0)', 'totalAmount')
       .addSelect('COUNT(tip.id)', 'totalTips')
@@ -384,7 +391,16 @@ export class TipsService {
       .addGroupBy('tip.assetIssuer')
       .getRawMany();
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return result;
+    return result.map((row) => {
+      /* eslint-disable @typescript-eslint/no-base-to-string */
+      const mapped = {
+        totalAmount: String(row.totalAmount ?? '0'),
+        totalTips: String(row.totalTips ?? '0'),
+        asset: String(row.asset ?? 'XLM'),
+        assetIssuer: row.assetIssuer ? String(row.assetIssuer) : null,
+      };
+      /* eslint-enable @typescript-eslint/no-base-to-string */
+      return mapped;
+    });
   }
 }
