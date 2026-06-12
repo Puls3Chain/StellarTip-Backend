@@ -177,6 +177,7 @@ Query Parameters:
 | Variable                      | Description                  | Default                                      |
 |-------------------------------|------------------------------|----------------------------------------------|
 | `PORT`                        | Server port                  | `3000`                                       |
+| `CORS_ORIGIN`                 | Allowed CORS origin(s)       | `*`                                          |
 | `NODE_ENV`                    | Environment                  | `development`                                |
 | `DB_HOST`                     | Database host                | `localhost`                                  |
 | `DB_PORT`                     | Database port                | `5432`                                       |
