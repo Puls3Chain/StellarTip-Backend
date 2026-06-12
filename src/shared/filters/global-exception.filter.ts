@@ -60,6 +60,9 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       statusCode: status,
       message,
       errors: errors.length > 0 ? errors : undefined,
+      requestId:
+        (request as unknown as Record<string, unknown>)['requestId'] ||
+        'unknown',
       timestamp: new Date().toISOString(),
       path: request.url,
     });
