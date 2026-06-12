@@ -14,19 +14,28 @@ export class HttpLoggingMiddleware implements NestMiddleware {
       const duration = Date.now() - startTime;
       const { statusCode } = res;
 
-      const logLevel = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'log';
       const requestId =
-        (req as unknown as Record<string, unknown>)['requestId'] as
+        ((req as unknown as Record<string, unknown>)['requestId'] as
           | string
-          | undefined ?? '';
+          | undefined) ?? '';
 
-      this.logger[logLevel](`${method} ${originalUrl} ${statusCode} ${duration}ms`, 'HTTP', {
+      const meta: Record<string, unknown> = {
         method,
         url: originalUrl,
         statusCode,
         duration,
         requestId,
-      });
+      };
+
+      const msg = `${method} ${originalUrl} ${statusCode} ${duration}ms`;
+
+      if (statusCode >= 500) {
+        this.logger.error(msg, undefined, 'HTTP', meta);
+      } else if (statusCode >= 400) {
+        this.logger.warn(msg, 'HTTP', meta);
+      } else {
+        this.logger.log(msg, 'HTTP', meta);
+      }
     });
 
     next();

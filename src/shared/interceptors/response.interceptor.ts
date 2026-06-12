@@ -28,9 +28,9 @@ export class ResponseInterceptor<T>
     const httpResponse = httpCtx.getResponse<Response>();
     const httpRequest = httpCtx.getRequest<Request>();
     const requestId =
-      (httpRequest as unknown as Record<string, unknown>)['requestId'] as
+      ((httpRequest as unknown as Record<string, unknown>)['requestId'] as
         | string
-        | undefined ?? '';
+        | undefined) ?? '';
 
     return next.handle().pipe(
       map((responseBody: T) => ({
