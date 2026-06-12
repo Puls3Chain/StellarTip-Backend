@@ -1,11 +1,12 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { StellarService } from '../stellar/stellar.service';
+import { StructuredLogger } from '../shared/logging/logging.config';
 
 @Injectable()
 export class HealthService {
-  private readonly logger = new Logger(HealthService.name);
+  private readonly logger = new StructuredLogger();
   private readonly startTime = Date.now();
 
   constructor(
@@ -43,7 +44,11 @@ export class HealthService {
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error('Database health check failed:', message);
+      this.logger.error(
+        'Database health check failed: ' + message,
+        undefined,
+        'HealthService',
+      );
       return {
         status: 'error',
         database: 'disconnected',
@@ -75,7 +80,11 @@ export class HealthService {
       };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.error('Stellar health check failed:', message);
+      this.logger.error(
+        'Stellar health check failed: ' + message,
+        undefined,
+        'HealthService',
+      );
       return {
         status: 'error',
         stellar: 'unreachable',
